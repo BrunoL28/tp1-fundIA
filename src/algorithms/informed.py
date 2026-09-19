@@ -1,108 +1,82 @@
-import heapq
-from typing import Optional, Set
-from src.models.problem import BridgeProblem
-from src.models.node import Node
-from src.algorithms.base_search import BaseSearch
-from src.utils.heuristics import max_time_heuristic
+"""
+Estratégia de busca informada (heurística).
 
-class UniformCostSearch(BaseSearch):
-    """
-    Busca de Custo Mínimo (Lowest-Cost-First Search).
-    Expande o nó com o menor custo g(n) acumulado até ao momento.
-    """
-    def solve(self, problem: BridgeProblem) -> Optional[Node]:
-        initial_state = problem.get_initial_state()
-        initial_node = Node(state=initial_state)
-        
-        # A fronteira é tratada como uma fila de prioridades (min-heap)
-        # O contador 'seq' serve apenas como critério de desempate secundário
-        # caso dois nós tenham o mesmo custo, evitando que o heapq tente comparar instâncias de Node.
-        seq = 0
-        frontier = [(initial_node.path_cost, seq, initial_node)]
-        
-        explored = {}
-        
-        while frontier:
-            if self.nodes_expanded >= self.max_expansions:
-                return None
-                
-            current_cost, _, node = heapq.heappop(frontier)
-            
-            # Se o estado já foi explorado com um custo menor ou igual, ignoramos
-            if node.state in explored and explored[node.state] <= current_cost:
-                continue
-                
-            explored[node.state] = current_cost
-            self.nodes_expanded += 1
-            
-            # Verificação de objetivo ao expandir o nó
-            if node.state.is_goal():
-                return node
-                
-            for action, next_state, action_cost in problem.get_successors(node.state):
-                new_cost = current_cost + action_cost
-                
-                # Apenas adicionamos à fronteira se for um caminho mais barato para o estado
-                if next_state not in explored or new_cost < explored[next_state]:
-                    child = Node(
-                        state=next_state,
-                        parent=node,
-                        action=action,
-                        path_cost=new_cost
-                    )
-                    seq += 1
-                    heapq.heappush(frontier, (child.path_cost, seq, child))
-                    
-        return None
+A busca A* acelera a procura pelo caminho de custo mínimo priorizando os
+caminhos que parecem mais promissores, segundo uma função heurística h(n) que
+estima o custo restante de n até o objetivo.
+"""
+
+import heapq
+from typing import Callable, Optional
+
+from src.algorithms.base_search import BaseSearch, DEFAULT_MAX_EXPANSIONS
+from src.models.path import Path
+from src.models.problem import BridgeProblem
+from src.utils.heuristics import max_time_heuristic
 
 
 class AStarSearch(BaseSearch):
     """
-    Busca A* (A-Star).
-    Expande o nó com a menor estimativa f(n) = g(n) + h(n).
+    Busca A*.
+
+    Combina o critério da Busca pelo Primeiro Caminho de Custo Mínimo com a
+    informação da heurística: para um caminho p = <n_0, ..., n>, a fronteira é
+    ordenada pela estimativa do custo total
+
+        f(p) = cost(p) + h(n)
+
+    em que cost(p) é o custo já percorrido (g) e h(n) estima o que falta. Com
+    uma heurística admissível, f nunca superestima o custo total do melhor
+    caminho que passa por p, e o primeiro caminho-solução selecionado é ótimo.
     """
-    def solve(self, problem: BridgeProblem) -> Optional[Node]:
-        initial_state = problem.get_initial_state()
-        initial_node = Node(
-            state=initial_state,
-            heuristic=max_time_heuristic(initial_state)
-        )
-        
+
+    display_name = "Busca A*"
+
+    def __init__(
+        self,
+        heuristic: Callable = max_time_heuristic,
+        max_expansions: int = DEFAULT_MAX_EXPANSIONS,
+        display_name: Optional[str] = None,
+    ):
+        super().__init__(max_expansions=max_expansions)
+        self.heuristic = heuristic
+        if display_name is not None:
+            self.display_name = display_name
+
+    def solve(self, problem: BridgeProblem) -> Optional[Path]:
+        initial = Path(problem.get_initial_state())
+
         seq = 0
-        # A fila de prioridade ordena os caminhos considerando f(p)
-        frontier = [(initial_node.total_cost, seq, initial_node)]
-        
+        frontier = [(initial.cost + self.heuristic(initial.end()), seq, initial)]
+        self.observe_frontier(len(frontier))
+
         explored = {}
-        
+
         while frontier:
-            if self.nodes_expanded >= self.max_expansions:
+            if self.expansion_limit_reached():
                 return None
-                
-            current_f, _, node = heapq.heappop(frontier)
-            
-            if node.state in explored and explored[node.state] <= node.path_cost:
+
+            _, _, path = heapq.heappop(frontier)
+            node = path.end()
+
+            if node in explored and explored[node] <= path.cost:
                 continue
-                
-            explored[node.state] = node.path_cost
-            self.nodes_expanded += 1
-            
-            if node.state.is_goal():
-                return node
-                
-            for action, next_state, action_cost in problem.get_successors(node.state):
-                new_g = node.path_cost + action_cost
-                
-                if next_state not in explored or new_g < explored[next_state]:
-                    h_val = max_time_heuristic(next_state)
-                    child = Node(
-                        state=next_state,
-                        parent=node,
-                        action=action,
-                        path_cost=new_g,
-                        heuristic=h_val
-                    )
+
+            explored[node] = path.cost
+
+            if node.is_goal():
+                return path
+
+            self.count_expansion()
+
+            for arc in problem.get_successors(node):
+                self.count_generated()
+                new_cost = path.cost + arc.cost
+
+                if arc.to_node not in explored or new_cost < explored[arc.to_node]:
                     seq += 1
-                    # A prioridade é dada pelo total_cost (f(p) = path_cost + heuristic)
-                    heapq.heappush(frontier, (child.total_cost, seq, child))
-                    
+                    priority = new_cost + self.heuristic(arc.to_node)
+                    heapq.heappush(frontier, (priority, seq, path.extend(arc)))
+                    self.observe_frontier(len(frontier))
+
         return None

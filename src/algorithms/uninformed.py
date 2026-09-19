@@ -1,91 +1,180 @@
+"""
+Estratégias de busca desinformadas ("cegas").
+
+Nenhuma delas usa informação prévia sobre onde o objetivo provavelmente está:
+BFS seleciona o caminho com menor número de arestas e a Busca pelo Primeiro
+Caminho de Custo Mínimo (lowest-cost-first search) seleciona o caminho de menor
+custo acumulado. As três compartilham o mesmo procedimento geral de busca,
+variando apenas o critério de seleção do próximo caminho da fronteira.
+"""
+
+import heapq
 from collections import deque
 from typing import Optional, Set
-from src.models.problem import BridgeProblem
-from src.models.node import Node
+
 from src.algorithms.base_search import BaseSearch
+from src.models.path import Path
+from src.models.problem import BridgeProblem
+
 
 class BreadthFirstSearch(BaseSearch):
     """
     Busca em Largura (BFS).
-    Explora o espaço de estados nível por nível utilizando uma fila (FIFO).
+
+    A fronteira é uma fila FIFO de caminhos: a cada iteração é selecionado um
+    caminho com o menor número de arestas, o que equivale a explorar o grafo em
+    níveis a partir do nó inicial.
     """
-    def solve(self, problem: BridgeProblem) -> Optional[Node]:
-        initial_node = Node(state=problem.get_initial_state())
-        
-        if initial_node.state.is_goal():
-            return initial_node
-            
-        frontier = deque([initial_node])
-        frontier_states = {initial_node.state}
+
+    display_name = "Busca em Largura (BFS)"
+
+    def solve(self, problem: BridgeProblem) -> Optional[Path]:
+        initial = Path(problem.get_initial_state())
+
+        frontier = deque([initial])
+        frontier_states = {initial.end()}
         explored: Set = set()
-        
+        self.observe_frontier(len(frontier))
+
         while frontier:
             # Prevenção contra processamento excessivo
-            if self.nodes_expanded >= self.max_expansions:
+            if self.expansion_limit_reached():
                 return None
-                
-            node = frontier.popleft()
-            frontier_states.remove(node.state)
-            explored.add(node.state)
-            self.nodes_expanded += 1
-            
-            for action, next_state, cost in problem.get_successors(node.state):
-                child = Node(
-                    state=next_state,
-                    parent=node,
-                    action=action,
-                    path_cost=node.path_cost + cost
-                )
-                
-                if next_state not in explored and next_state not in frontier_states:
-                    # No BFS, verificamos o objetivo no momento da geração do nó
-                    if child.state.is_goal():
-                        self.nodes_expanded += 1
-                        return child
-                    frontier.append(child)
-                    frontier_states.add(next_state)
-                    
+
+            path = frontier.popleft()
+            node = path.end()
+            frontier_states.discard(node)
+
+            # O teste de objetivo é feito sobre o caminho selecionado, no
+            # momento em que ele é removido da fronteira.
+            if node.is_goal():
+                return path
+
+            explored.add(node)
+            self.count_expansion()
+
+            for arc in problem.get_successors(node):
+                self.count_generated()
+
+                # Poda de caminhos múltiplos: um estado já explorado ou já
+                # presente na fronteira não precisa entrar de novo, pois
+                # qualquer caminho até ele já foi (ou será) considerado.
+                if arc.to_node in explored or arc.to_node in frontier_states:
+                    continue
+
+                frontier.append(path.extend(arc))
+                frontier_states.add(arc.to_node)
+                self.observe_frontier(len(frontier))
+
         return None
 
 
 class DepthFirstSearch(BaseSearch):
     """
     Busca em Profundidade (DFS).
-    Explora o ramo mais profundo disponível utilizando uma pilha (LIFO).
+
+    A fronteira é uma pilha LIFO de caminhos: a cada iteração é selecionado o
+    caminho mais recentemente adicionado, aprofundando um ramo antes de
+    considerar alternativas.
+
+    A poda de caminhos múltiplos é indispensável aqui: como toda travessia é
+    reversível, o grafo tem ciclos e um DFS sem verificação de estados
+    repetidos ficaria preso indefinidamente indo e voltando pela ponte.
     """
-    def solve(self, problem: BridgeProblem) -> Optional[Node]:
-        initial_node = Node(state=problem.get_initial_state())
-        
-        frontier = [initial_node]
-        frontier_states = {initial_node.state}
+
+    display_name = "Busca em Profundidade (DFS)"
+
+    def solve(self, problem: BridgeProblem) -> Optional[Path]:
+        initial = Path(problem.get_initial_state())
+
+        frontier = [initial]
+        frontier_states = {initial.end()}
         explored: Set = set()
-        
+        self.observe_frontier(len(frontier))
+
         while frontier:
-            if self.nodes_expanded >= self.max_expansions:
+            if self.expansion_limit_reached():
                 return None
-                
-            node = frontier.pop()
-            frontier_states.remove(node.state)
-            
-            # No DFS, verificamos o objetivo após a extração da fronteira
-            if node.state.is_goal():
-                return node
-                
-            explored.add(node.state)
-            self.nodes_expanded += 1
-            
-            # Inverter a ordem dos sucessores garante uma expansão consistente 
-            # da esquerda para a direita na árvore.
-            for action, next_state, cost in reversed(problem.get_successors(node.state)):
-                child = Node(
-                    state=next_state,
-                    parent=node,
-                    action=action,
-                    path_cost=node.path_cost + cost
-                )
-                
-                if next_state not in explored and next_state not in frontier_states:
-                    frontier.append(child)
-                    frontier_states.add(next_state)
-                    
+
+            path = frontier.pop()
+            node = path.end()
+            frontier_states.discard(node)
+
+            if node.is_goal():
+                return path
+
+            explored.add(node)
+            self.count_expansion()
+
+            # Inverter a ordem dos sucessores faz com que a pilha os desempilhe
+            # na ordem em que a função sucessora os gerou.
+            for arc in reversed(problem.get_successors(node)):
+                self.count_generated()
+
+                if arc.to_node in explored or arc.to_node in frontier_states:
+                    continue
+
+                frontier.append(path.extend(arc))
+                frontier_states.add(arc.to_node)
+                self.observe_frontier(len(frontier))
+
+        return None
+
+
+class LowestCostFirstSearch(BaseSearch):
+    """
+    Busca pelo Primeiro Caminho de Custo Mínimo (lowest-cost-first search),
+    também conhecida como Busca de Custo Uniforme (UCS).
+
+    Procedimento análogo ao da BFS, porém, em vez de selecionar o caminho com o
+    menor número de arestas, seleciona o caminho de menor custo acumulado até o
+    momento. A fronteira é tratada como uma fila de prioridades (`heapq`),
+    ordenada por cost(p).
+
+    Como o custo de toda travessia é positivo, o primeiro caminho até o
+    objetivo a ser selecionado é necessariamente um caminho de custo mínimo -
+    daí a garantia de otimalidade que a BFS não oferece.
+    """
+
+    display_name = "Busca de Custo Mínimo (LCFS)"
+
+    def solve(self, problem: BridgeProblem) -> Optional[Path]:
+        initial = Path(problem.get_initial_state())
+
+        # O contador 'seq' é apenas um critério de desempate estável para custos
+        # iguais, evitando que o heapq precise comparar instâncias de Path.
+        seq = 0
+        frontier = [(initial.cost, seq, initial)]
+        self.observe_frontier(len(frontier))
+
+        # Poda de caminhos múltiplos: menor custo já confirmado para cada estado.
+        explored = {}
+
+        while frontier:
+            if self.expansion_limit_reached():
+                return None
+
+            cost, _, path = heapq.heappop(frontier)
+            node = path.end()
+
+            # Já existe um caminho igual ou mais barato até este estado.
+            if node in explored and explored[node] <= cost:
+                continue
+
+            explored[node] = cost
+
+            if node.is_goal():
+                return path
+
+            self.count_expansion()
+
+            for arc in problem.get_successors(node):
+                self.count_generated()
+                new_cost = cost + arc.cost
+
+                if arc.to_node not in explored or new_cost < explored[arc.to_node]:
+                    seq += 1
+                    heapq.heappush(frontier, (new_cost, seq, path.extend(arc)))
+                    self.observe_frontier(len(frontier))
+
         return None
