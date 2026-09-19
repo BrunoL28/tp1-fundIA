@@ -1,91 +1,125 @@
-import networkx as nx
 import matplotlib.pyplot as plt
-from collections import deque
+import networkx as nx
+
+from src.algorithms.informed import AStarSearch
 from src.models.problem import BridgeProblem
 from src.models.state import State
+from src.utils.state_space import StateSpace, explore_state_space
 
-def format_state_for_print(state: State) -> str:
-    """Formata o estado para o output textual no terminal."""
-    pessoas_inicio = ", ".join(map(str, sorted(state.left_side))) if state.left_side else "Ninguém"
-    tocha = "inicio" if state.torch_is_left else "final"
-    return f"(Pessoas no início: [{pessoas_inicio}], Tocha: {tocha})"
+OUTPUT_FILE = "bridge_state_graph.png"
+
 
 def get_state_label(state: State) -> str:
-    """Formata o estado para exibição legível no nó do grafo visual."""
-    esq = ",".join(map(str, sorted(state.left_side))) if state.left_side else "Vazio"
-    dir = ",".join(map(str, sorted(state.right_side))) if state.right_side else "Vazio"
-    tocha = "Esq" if state.torch_is_left else "Dir"
-    return f"Esq: [{esq}]\nDir: [{dir}]\nT: {tocha}"
+    """Rótulo legível do estado dentro do nó do grafo."""
+    left = ",".join(map(str, sorted(state.left_side))) if state.left_side else "Vazio"
+    right = ",".join(map(str, sorted(state.right_side))) if state.right_side else "Vazio"
+    torch = "Esq" if state.torch_is_left else "Dir"
+    return f"Esq: [{left}]\nDir: [{right}]\nT: {torch}"
 
-def generate_state_space_graph():
-    problem = BridgeProblem()
-    initial_state = problem.get_initial_state()
-    
-    G = nx.DiGraph()
-    frontier = deque([initial_state])
-    explored = {initial_state}
-    
-    # Dicionário para armazenar as transições e imprimir posteriormente
-    transitions_dict = {}
-    
-    # Adiciona o nó inicial
-    G.add_node(get_state_label(initial_state))
-    
+
+def build_graph(space: StateSpace) -> nx.DiGraph:
+    graph = nx.DiGraph()
+
+    for state in space.states:
+        graph.add_node(get_state_label(state), layer=len(state.right_side))
+
+    for arc in space.all_transitions():
+        graph.add_edge(
+            get_state_label(arc.from_node),
+            get_state_label(arc.to_node),
+            label=f"{arc.label} t:{arc.cost}",
+        )
+
+    return graph
+
+
+def optimal_path_edges(problem: BridgeProblem):
+    """Arestas do caminho ótimo, sua descrição passo a passo e o custo total."""
+    solution = AStarSearch().solve(problem)
+    if solution is None:
+        return [], [], None
+
+    edges = []
+    steps = []
+    for number, arc in enumerate(solution.arcs(), 1):
+        edges.append((get_state_label(arc.from_node), get_state_label(arc.to_node)))
+        direction = "ida  " if arc.is_forward else "volta"
+        steps.append(f"{number}. {direction} {arc.label:<8} {arc.cost:>2} min")
+
+    return edges, steps, solution.cost
+
+
+def generate_state_space_graph(output_file: str = OUTPUT_FILE) -> None:
     print("Mapeando espaço de estados...")
-    while frontier:
-        state = frontier.popleft()
-        current_label = get_state_label(state)
-        
-        transitions_dict[state] = []
-        
-        for action, next_state, cost in problem.get_successors(state):
-            next_label = get_state_label(next_state)
-            
-            # Adiciona o nó e a aresta (transição) visual
-            G.add_node(next_label)
-            G.add_edge(current_label, next_label, label=f"{list(action)} (t:{cost})")
-            
-            # Regista a transição para o terminal
-            transitions_dict[state].append((next_state, cost))
-            
-            if next_state not in explored:
-                explored.add(next_state)
-                frontier.append(next_state)
+    problem = BridgeProblem()
+    space = explore_state_space(problem)
+    graph = build_graph(space)
+    highlight, steps, optimal_cost = optimal_path_edges(problem)
 
-    print("\nGerando imagem do grafo (isto pode levar alguns segundos)...")
-    
-    plt.figure(figsize=(20, 14))
-    pos = nx.spring_layout(G, k=0.9, iterations=50)
-    
+    print("Gerando imagem do grafo (isto pode levar alguns segundos)...")
+
+    # Layout em camadas: cada coluna reúne os estados com o mesmo número de
+    # pessoas já na margem direita, de modo que a figura seja lida da esquerda
+    # (todos na margem inicial) para a direita (objetivo).
+    positions = nx.multipartite_layout(graph, subset_key="layer", scale=2.6)
+
+    initial_label = get_state_label(space.initial)
+    goal_labels = {get_state_label(goal) for goal in space.goals}
+
     node_colors = []
-    for node in G.nodes():
-        if node == get_state_label(initial_state):
+    for node in graph.nodes():
+        if node == initial_label:
             node_colors.append("gold")
-        elif "Esq: [Vazio]" in node:
+        elif node in goal_labels:
             node_colors.append("lightgreen")
         else:
             node_colors.append("lightblue")
-            
-    nx.draw(
-        G, pos, 
-        with_labels=True, 
-        node_color=node_colors, 
-        node_size=4000, 
-        font_size=8, 
-        font_weight="bold", 
-        arrows=True,
-        arrowsize=15,
-        edge_color="gray"
-    )
-    
-    edge_labels = nx.get_edge_attributes(G, 'label')
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_size=7, font_color="red")
-    
-    plt.title("Espaço de Estados - Problema da Ponte e Tocha", fontsize=16)
-    
-    output_file = "bridge_state_graph.png"
-    plt.savefig(output_file, dpi=300, bbox_inches="tight")
+
+    highlight_set = set(highlight)
+    regular_edges = [edge for edge in graph.edges() if edge not in highlight_set]
+
+    plt.figure(figsize=(22, 14))
+
+    nx.draw_networkx_nodes(graph, positions, node_color=node_colors, node_size=2600,
+                           edgecolors="gray", linewidths=0.8)
+    nx.draw_networkx_labels(graph, positions, font_size=7, font_weight="bold")
+
+    # As duas direções de cada par de estados são desenhadas com curvatura para
+    # que não se sobreponham.
+    nx.draw_networkx_edges(graph, positions, edgelist=regular_edges, edge_color="lightgray",
+                           arrows=True, arrowsize=9, width=0.6,
+                           connectionstyle="arc3,rad=0.12", node_size=2600)
+
+    if highlight:
+        nx.draw_networkx_edges(graph, positions, edgelist=highlight, edge_color="crimson",
+                               arrows=True, arrowsize=18, width=2.2,
+                               connectionstyle="arc3,rad=0.12", node_size=2600)
+
+        # Os rótulos das arestas não acompanham a curvatura, então a sequência
+        # ótima é descrita em um quadro à parte, onde cabe sem sobreposição.
+        summary = (
+            "Caminho de custo mínimo\n"
+            + "\n".join(steps)
+            + f"\n{'total':<12}{optimal_cost:>3} min"
+        )
+        plt.gca().text(
+            0.01, 0.16, summary,
+            transform=plt.gca().transAxes,
+            fontsize=10, family="monospace", color="crimson", va="center",
+            bbox=dict(boxstyle="round,pad=0.5", fc="white", ec="crimson", alpha=0.9),
+        )
+
+    subtitle = f"{space.num_states} estados, {space.num_transitions} transições"
+    if optimal_cost is not None:
+        subtitle += f"; em destaque, o caminho de custo mínimo ({optimal_cost} min)"
+
+    plt.title(f"Espaço de Estados - Problema da Ponte e Tocha\n{subtitle}", fontsize=15)
+    plt.axis("off")
+    plt.savefig(output_file, dpi=200, bbox_inches="tight")
+    plt.close()
+
     print(f"Sucesso! Grafo salvo como '{output_file}' na raiz do projeto.")
+
 
 if __name__ == "__main__":
     generate_state_space_graph()
