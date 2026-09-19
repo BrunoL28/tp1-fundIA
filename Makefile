@@ -13,6 +13,10 @@ run:
 	@echo "Executando os algoritmos de busca..."
 	uv run python -m src.main
 
+transitions:
+	@echo "Mapeando transicoes e sobrescrevendo resultados.md..."
+	uv run python -m src.utils.generate_transitions
+
 graph:
 	@echo "Gerando a visualizacao do grafo..."
 	uv run python -m src.utils.generate_graph

@@ -28,6 +28,7 @@ Na raiz do projeto, utilize os seguintes comandos no terminal:
 
 - **`make setup`**: Cria o ambiente virtual (`.venv`) e instala as dependências exatas definidas no `requirements.txt`.
 - **`make test`**: Executa a suíte completa de testes via `pytest` (valida regras de transição, limitação de capacidade e heurística).
-- **`make run`**: Roda o comparativo dos quatro algoritmos de busca, imprimindo a tabela de métricas no terminal.
+- **`make run`**: Executa o comparativo dos quatro algoritmos de busca e gera o arquivo `resultados.md` contendo a tabela de métricas e o caminho da solução ótima.
+- **`make transitions`**: Mapeia todo o espaço de estados e **adiciona** ao arquivo `resultados.md` a listagem detalhada de todas as transições válidas e seus custos.
 - **`make graph`**: Mapeia o domínio do problema e exporta a visualização da árvore em alta resolução para a imagem `bridge_state_graph.png`.
 - **`make clean`**: Limpa diretórios de cache (`__pycache__`, `.pytest_cache`) e destrói o ambiente virtual.

@@ -52,21 +52,6 @@ def generate_state_space_graph():
                 explored.add(next_state)
                 frontier.append(next_state)
 
-    # --- IMPRESSÃO NO TERMINAL ---
-    print(f"\nExploração completa. Total de {len(explored)} estados únicos encontrados.\n")
-    print("As transições (arestas do grafo) são:\n")
-    
-    for state, transitions in transitions_dict.items():
-        print(f"DO ESTADO: {format_state_for_print(state)}")
-        
-        if not transitions:
-            print("  -> Nenhuma ação possível a partir daqui (estado final).")
-        else:
-            for next_state, cost in transitions:
-                print(f"  -> VAI PARA: {format_state_for_print(next_state)} com CUSTO: {cost}")
-        print("-" * 60)
-    # -----------------------------
-
     print("\nGerando imagem do grafo (isto pode levar alguns segundos)...")
     
     plt.figure(figsize=(20, 14))
