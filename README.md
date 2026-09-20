@@ -31,11 +31,11 @@ A busca segue o procedimento geral visto em aula: a **fronteira é um conjunto d
 Ambas são admissíveis e consistentes, o que é verificado exaustivamente nos testes e por `make heuristics`:
 
 - **`h1`** - tempo da pessoa mais lenta ainda na margem esquerda.
-- **`h2`** - limite inferior do emparelhamento das idas somado ao custo mínimo dos retornos obrigatórios. Domina `h1` e expande menos nós.
+- **`h2`** - limite inferior do agrupamento das idas somado ao custo mínimo dos retornos obrigatórios. Domina `h1` e expande menos nós. O agrupamento respeita a capacidade da ponte (`get_heuristic("h2", problem)`), então a heurística continua admissível em instâncias com `--capacidade` diferente de 2.
 
 ## Espaço de Estados (Grafo)
 
-Abaixo encontra-se a modelagem visual do problema, representando as ramificações e custos (tempos) de transição desde o estado inicial até à meta. O caminho de custo mínimo aparece destacado em vermelho:
+Abaixo encontra-se a modelagem visual do problema: os 30 estados alcançáveis dispostos em camadas (pelo número de pessoas já na margem direita) e as 112 transições entre eles. O caminho de custo mínimo aparece destacado em vermelho, com as travessias e seus tempos no quadro à esquerda; os custos de todas as transições estão na lista de adjacências gerada por `make transitions` em `resultados.md`.
 
 ![Grafo do Espaço de Estados](bridge_state_graph.png)
 
@@ -46,6 +46,16 @@ Este projeto utiliza o `uv` (gerenciador de pacotes e ambientes Python) integrad
 ### Pré-requisitos
 
 Certifique-se de ter o [uv](https://github.com/astral-sh/uv) e o `make` instalados na sua máquina.
+
+Sem `uv` e `make` (por exemplo, no Windows), o fluxo equivalente com a biblioteca padrão é:
+
+```bash
+python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt     # Linux/macOS: .venv/bin/pip
+.venv\Scripts\python -m pytest                    # make test
+.venv\Scripts\python -m src.main                  # make run
+.venv\Scripts\python -m src.utils.generate_transitions   # make transitions (idem heuristic_analysis, scaling_experiment, generate_graph)
+```
 
 ### Comandos Disponíveis
 

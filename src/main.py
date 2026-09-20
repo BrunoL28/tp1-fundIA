@@ -16,16 +16,17 @@ from src.utils.metrics_logger import print_metrics_table, save_metrics_to_markdo
 DEFAULT_REPETITIONS = 1000
 
 # Registro dos métodos disponíveis: a chave é o nome usado na linha de comando
-# e o valor é a fábrica que constrói o algoritmo com o limite de expansões.
-ALGORITHMS: Dict[str, Callable[[int], BaseSearch]] = {
-    "bfs": lambda limit: BreadthFirstSearch(max_expansions=limit),
-    "dfs": lambda limit: DepthFirstSearch(max_expansions=limit),
-    "lcfs": lambda limit: LowestCostFirstSearch(max_expansions=limit),
-    "astar-h1": lambda limit: AStarSearch(
-        heuristic=get_heuristic("h1"), max_expansions=limit, display_name="Busca A* (h1)"
+# e o valor é a fábrica que constrói o algoritmo com o limite de expansões e o
+# problema (de que as heurísticas dependem: h2 usa a capacidade da ponte).
+ALGORITHMS: Dict[str, Callable[[int, BridgeProblem], BaseSearch]] = {
+    "bfs": lambda limit, problem: BreadthFirstSearch(max_expansions=limit),
+    "dfs": lambda limit, problem: DepthFirstSearch(max_expansions=limit),
+    "lcfs": lambda limit, problem: LowestCostFirstSearch(max_expansions=limit),
+    "astar-h1": lambda limit, problem: AStarSearch(
+        heuristic=get_heuristic("h1", problem), max_expansions=limit, display_name="Busca A* (h1)"
     ),
-    "astar-h2": lambda limit: AStarSearch(
-        heuristic=get_heuristic("h2"), max_expansions=limit, display_name="Busca A* (h2)"
+    "astar-h2": lambda limit, problem: AStarSearch(
+        heuristic=get_heuristic("h2", problem), max_expansions=limit, display_name="Busca A* (h2)"
     ),
 }
 
@@ -42,8 +43,10 @@ def configure_stdout() -> None:
         pass
 
 
-def build_algorithms(names: List[str], max_expansions: int) -> List[BaseSearch]:
-    return [ALGORITHMS[name](max_expansions) for name in names]
+def build_algorithms(
+    names: List[str], max_expansions: int, problem: BridgeProblem
+) -> List[BaseSearch]:
+    return [ALGORITHMS[name](max_expansions, problem) for name in names]
 
 
 def parse_args():
@@ -112,7 +115,7 @@ def main():
         capacity=args.capacidade,
         memoize=not args.sem_cache,
     )
-    algorithms = build_algorithms(args.algoritmos, args.max_expansoes)
+    algorithms = build_algorithms(args.algoritmos, args.max_expansoes, problem)
 
     print("Iniciando resolução do problema Ponte e Tocha...")
     print(f"Tempos: {list(args.tempos)} | capacidade: {args.capacidade}")

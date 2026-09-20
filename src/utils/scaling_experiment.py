@@ -32,14 +32,14 @@ REPETITIONS = 200
 MAX_EXPANSIONS = 200000
 
 
-def build_algorithms() -> List[BaseSearch]:
+def build_algorithms(problem: BridgeProblem) -> List[BaseSearch]:
     return [
         BreadthFirstSearch(max_expansions=MAX_EXPANSIONS),
         DepthFirstSearch(max_expansions=MAX_EXPANSIONS),
         LowestCostFirstSearch(max_expansions=MAX_EXPANSIONS),
-        AStarSearch(heuristic=get_heuristic("h1"), max_expansions=MAX_EXPANSIONS,
+        AStarSearch(heuristic=get_heuristic("h1", problem), max_expansions=MAX_EXPANSIONS,
                     display_name="A* (h1)"),
-        AStarSearch(heuristic=get_heuristic("h2"), max_expansions=MAX_EXPANSIONS,
+        AStarSearch(heuristic=get_heuristic("h2", problem), max_expansions=MAX_EXPANSIONS,
                     display_name="A* (h2)"),
     ]
 
@@ -63,7 +63,7 @@ def run_instance(size: int) -> InstanceResult:
     problem.warm_cache()
 
     expanded, elapsed, costs = {}, {}, {}
-    for algorithm in build_algorithms():
+    for algorithm in build_algorithms(problem):
         result = algorithm.execute(problem, repetitions=REPETITIONS)
         expanded[algorithm.display_name] = result.nodes_expanded
         elapsed[algorithm.display_name] = result.mean_time_us
@@ -170,9 +170,14 @@ def build_section(results: List[InstanceResult]) -> str:
     time_drop = 100 * (1 - h2_time / h1_time)
 
     if node_drop > time_drop:
+        if time_drop > 0:
+            time_sentence = f"mas o tempo cai apenas {_decimal(time_drop)}%."
+        else:
+            time_sentence = f"mas o tempo não acompanha: ele até sobe {_decimal(-time_drop)}%."
+
         lines.extend([
             "Um detalhe que a tabela de tempos revela: de h₁ para h₂ os nós expandidos caem",
-            f"{_decimal(node_drop)}%, mas o tempo cai apenas {_decimal(time_drop)}%. A heurística mais",
+            f"{_decimal(node_drop)}%, {time_sentence} A heurística mais",
             "informativa poda mais, porém custa mais caro por nó avaliado - ela ordena os tempos",
             "da margem esquerda a cada chamada, enquanto h₁ apenas toma um máximo. O ganho em nós",
             "expandidos não se converte integralmente em ganho de tempo.",

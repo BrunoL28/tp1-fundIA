@@ -2,6 +2,7 @@ import pytest
 
 from src.algorithms.base_search import BaseSearch
 from src.main import ALGORITHMS, build_algorithms, parse_args
+from src.models.problem import BridgeProblem
 from src.utils import scaling_experiment as scaling
 
 
@@ -10,7 +11,7 @@ def test_registry_exposes_every_method():
 
 
 def test_build_algorithms_honours_selection_and_limit():
-    algorithms = build_algorithms(["bfs", "astar-h2"], max_expansions=42)
+    algorithms = build_algorithms(["bfs", "astar-h2"], max_expansions=42, problem=BridgeProblem())
 
     assert [type(a).__name__ for a in algorithms] == ["BreadthFirstSearch", "AStarSearch"]
     assert all(isinstance(a, BaseSearch) for a in algorithms)
@@ -44,8 +45,14 @@ def test_cli_rejects_unknown_algorithm(monkeypatch):
 
 @pytest.fixture(scope="module")
 def instance():
+    # Poucas repetições bastam para o teste; o valor original é restaurado ao
+    # fim do módulo para não contaminar outros testes.
+    original = scaling.REPETITIONS
     scaling.REPETITIONS = 2
-    return scaling.run_instance(4)
+    try:
+        yield scaling.run_instance(4)
+    finally:
+        scaling.REPETITIONS = original
 
 
 def test_scaling_reproduces_the_assignment_instance(instance):

@@ -17,7 +17,7 @@ from typing import Callable, Dict, List, Optional
 from src.algorithms.informed import AStarSearch
 from src.models.problem import BridgeProblem
 from src.models.state import State
-from src.utils.heuristics import HEURISTIC_LABELS, HEURISTICS
+from src.utils.heuristics import HEURISTIC_LABELS, HEURISTICS, get_heuristic
 from src.utils.markdown_report import upsert_section
 from src.utils.state_space import StateSpace, explore_state_space
 
@@ -131,8 +131,8 @@ def generate_and_save_analysis(filename: str = "resultados.md") -> List[Heuristi
     optimal = space.optimal_costs_to_goal()
 
     reports = [
-        analyse(name, heuristic, space, optimal, problem)
-        for name, heuristic in HEURISTICS.items()
+        analyse(name, get_heuristic(name, problem), space, optimal, problem)
+        for name in HEURISTICS
     ]
 
     replaced = upsert_section(filename, SECTION_ID, build_section(reports, space))
