@@ -1,6 +1,7 @@
 import math
 from typing import Callable, Dict, Sequence
 
+from src.models.person import Person
 from src.models.state import State
 
 
@@ -18,10 +19,10 @@ def max_time_heuristic(state: State) -> int:
     """
     if not state.left_side:
         return 0
-    return max(state.left_side)
+    return max(person.time for person in state.left_side)
 
 
-def pairing_heuristic(state: State, people: Sequence[int] = ()) -> int:
+def pairing_heuristic(state: State, people: Sequence[Person] = ()) -> int:
     """
     h2(n) - limite inferior do emparelhamento das idas somado ao custo mínimo
     dos retornos ainda obrigatórios.
@@ -46,12 +47,12 @@ def pairing_heuristic(state: State, people: Sequence[int] = ()) -> int:
     é admissível. Como h2(n) >= h1(n) para todo n, h2 domina h1 e tende a
     expandir menos nós.
     """
-    remaining = sorted(state.left_side, reverse=True)
+    remaining = sorted((person.time for person in state.left_side), reverse=True)
     if not remaining:
         return 0
 
-    everyone = people or tuple(state.left_side | state.right_side)
-    fastest = min(everyone)
+    everyone = people or (state.left_side | state.right_side)
+    fastest = min(person.time for person in everyone)
 
     # Idas: soma dos tempos nas posições ímpares (1a, 3a, 5a... mais lentas).
     crossings_cost = sum(remaining[0::2])
