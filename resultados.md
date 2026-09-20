@@ -11,11 +11,11 @@ repetições, medido com `time.perf_counter()` e expresso em microssegundos (µs
 
 | Algoritmo                    | Custo (min) | Travessias | Nós expandidos | Nós gerados | Fronteira máx. | Tempo médio (µs) | Desvio (µs) | Tempo mín. (µs) |
 |:-----------------------------|------------:|-----------:|---------------:|------------:|---------------:|-----------------:|------------:|----------------:|
-| Busca em Largura (BFS)       |          19 |          5 |             25 |          98 |             10 |            69,49 |       28,58 |           62,90 |
-| Busca em Profundidade (DFS)  |          19 |          5 |              9 |          32 |             12 |            28,36 |       15,40 |           25,20 |
-| Busca de Custo Mínimo (LCFS) |          17 |          5 |             25 |          98 |             11 |            84,65 |       21,98 |           77,90 |
-| Busca A* (h1)                |          17 |          5 |             18 |          71 |             14 |            76,22 |       18,31 |           70,70 |
-| Busca A* (h2)                |          17 |          5 |             14 |          57 |             14 |            96,39 |       23,90 |           86,80 |
+| Busca em Largura (BFS)       |          19 |          5 |             25 |          98 |             10 |            50,36 |       20,34 |           48,10 |
+| Busca em Profundidade (DFS)  |          19 |          5 |              9 |          32 |             12 |            20,10 |        4,75 |           19,10 |
+| Busca de Custo Mínimo (LCFS) |          17 |          5 |             25 |          98 |             11 |            59,73 |        7,46 |           57,30 |
+| Busca A* (h1)                |          17 |          5 |             18 |          71 |             14 |            54,96 |        5,35 |           53,30 |
+| Busca A* (h2)                |          17 |          5 |             14 |          57 |             14 |            59,56 |       32,54 |           55,90 |
 
 ## Caminho da Solução Ótima
 
@@ -409,7 +409,7 @@ h\*(n) obtido por uma busca de custo mínimo sobre o grafo invertido.
 | Heurística | h(inicial) | h\*(inicial) | Admissível | Consistente | Erro médio h\*−h | Nós expandidos (A\*) | Custo obtido |
 |:--|--:|--:|:--:|:--:|--:|--:|--:|
 | h₁ = tempo da pessoa mais lenta à esquerda | 10 | 17 | sim | sim | 3,70 | 18 | 17 |
-| h₂ = emparelhamento das idas + retornos mínimos | 13 | 17 | sim | sim | 2,53 | 14 | 17 |
+| h₂ = agrupamento das idas + retornos mínimos | 13 | 17 | sim | sim | 2,53 | 14 | 17 |
 
 Como h2(n) >= h1(n) para todo estado sem deixar de ser admissível,
 h2 **domina** h1: é mais informativa e poda mais o espaço de busca.
@@ -452,11 +452,11 @@ estados cresce como 2^n x 2 e as diferenças ficam evidentes.
 
 | Pessoas | Busca em Largura (BFS) | Busca em Profundidade (DFS) | Busca de Custo Mínimo (LCFS) | A* (h1) | A* (h2) |
 |--:|--:|--:|--:|--:|--:|
-| 4 | 71,3 | 26,6 | 82,9 | 76,3 | 97,8 |
-| 5 | 182,8 | 45,8 | 235,3 | 199,7 | 234,4 |
-| 6 | 501,7 | 90,6 | 678,0 | 648,0 | 606,9 |
-| 7 | 1299,3 | 114,3 | 1705,5 | 1488,2 | 1306,6 |
-| 8 | 4473,4 | 205,5 | 6784,8 | 6195,1 | 6237,9 |
+| 4 | 49,7 | 19,7 | 58,8 | 54,3 | 57,1 |
+| 5 | 135,3 | 32,9 | 171,4 | 146,2 | 137,1 |
+| 6 | 359,8 | 50,0 | 456,3 | 402,3 | 351,5 |
+| 7 | 960,1 | 84,2 | 1229,6 | 1167,3 | 820,4 |
+| 8 | 2316,1 | 105,5 | 3064,5 | 2831,6 | 2096,0 |
 
 Com 8 pessoas, a Busca de Custo Mínimo expande 495 dos 510 estados do grafo, enquanto a A* com h₂ expande 223 (45,1% do total da busca cega) e chega ao mesmo custo
 ótimo. É esse o ganho que a heurística traz e que a instância de quatro pessoas não
@@ -468,7 +468,7 @@ assim, nunca encontra a melhor solução - expandir pouco não é sinal de quali
 apenas de parar no primeiro ramo que alcança o objetivo.
 
 Um detalhe que a tabela de tempos revela: de h₁ para h₂ os nós expandidos caem
-42,5%, mas o tempo cai apenas -0,7%. A heurística mais
+42,5%, mas o tempo cai apenas 26,0%. A heurística mais
 informativa poda mais, porém custa mais caro por nó avaliado - ela ordena os tempos
 da margem esquerda a cada chamada, enquanto h₁ apenas toma um máximo. O ganho em nós
 expandidos não se converte integralmente em ganho de tempo.
