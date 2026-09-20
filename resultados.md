@@ -11,11 +11,11 @@ repetições, medido com `time.perf_counter()` e expresso em microssegundos (µs
 
 | Algoritmo                    | Custo (min) | Travessias | Nós expandidos | Nós gerados | Fronteira máx. | Tempo médio (µs) | Desvio (µs) | Tempo mín. (µs) |
 |:-----------------------------|------------:|-----------:|---------------:|------------:|---------------:|-----------------:|------------:|----------------:|
-| Busca em Largura (BFS)       |          19 |          5 |             25 |          98 |             10 |           310,62 |      104,11 |          245,80 |
-| Busca em Profundidade (DFS)  |          19 |          5 |              9 |          32 |             12 |           157,39 |      216,01 |           87,00 |
-| Busca de Custo Mínimo (LCFS) |          17 |          5 |             25 |          98 |             20 |           336,32 |      127,38 |          280,50 |
-| Busca A* (h1)                |          17 |          5 |             18 |          71 |             24 |           260,68 |       92,30 |          202,80 |
-| Busca A* (h2)                |          17 |          5 |             14 |          57 |             26 |           286,47 |      216,09 |          191,20 |
+| Busca em Largura (BFS)       |          19 |          5 |             25 |          98 |             10 |            69,49 |       28,58 |           62,90 |
+| Busca em Profundidade (DFS)  |          19 |          5 |              9 |          32 |             12 |            28,36 |       15,40 |           25,20 |
+| Busca de Custo Mínimo (LCFS) |          17 |          5 |             25 |          98 |             11 |            84,65 |       21,98 |           77,90 |
+| Busca A* (h1)                |          17 |          5 |             18 |          71 |             14 |            76,22 |       18,31 |           70,70 |
+| Busca A* (h2)                |          17 |          5 |             14 |          57 |             14 |            96,39 |       23,90 |           86,80 |
 
 ## Caminho da Solução Ótima
 
@@ -418,3 +418,59 @@ nós expandidos pela A\* (4 a menos, 22,2%), mantendo o mesmo
 custo ótimo da solução - o que era esperado, já que ambas são admissíveis.
 
 <!-- END:heuristicas -->
+
+<!-- BEGIN:escalabilidade -->
+
+## Escalabilidade: crescimento com o número de pessoas
+
+A instância do enunciado (quatro pessoas) é pequena demais para separar os métodos.
+Aumentando o grupo - mantendo a ponte com capacidade para duas pessoas e acrescentando
+travessias progressivamente mais lentas a partir de [1, 2, 5, 10] -, o espaço de
+estados cresce como 2^n x 2 e as diferenças ficam evidentes.
+
+### Tamanho do grafo e solução ótima
+
+| Pessoas | Tempos | Estados (\|V\|) | Transições (\|E\|) | Custo ótimo |
+|--:|:--|--:|--:|--:|
+| 4 | 1, 2, 5, 10 | 30 | 112 | 17 |
+| 5 | 1, 2, 5, 10, 15 | 62 | 320 | 28 |
+| 6 | 1, 2, 5, 10, 15, 20 | 126 | 864 | 42 |
+| 7 | 1, 2, 5, 10, 15, 20, 25 | 254 | 2240 | 58 |
+| 8 | 1, 2, 5, 10, 15, 20, 25, 30 | 510 | 5632 | 77 |
+
+### Nós expandidos
+
+| Pessoas | Busca em Largura (BFS) | Busca em Profundidade (DFS) | Busca de Custo Mínimo (LCFS) | A* (h1) | A* (h2) |
+|--:|--:|--:|--:|--:|--:|
+| 4 | 25 | 9 | 25 | 18 | 14 |
+| 5 | 56 | 12 | 56 | 38 | 26 |
+| 6 | 119 | 15 | 117 | 84 | 56 |
+| 7 | 246 | 18 | 244 | 179 | 100 |
+| 8 | 501 | 21 | 495 | 388 | 223 |
+
+### Tempo médio de processamento (µs)
+
+| Pessoas | Busca em Largura (BFS) | Busca em Profundidade (DFS) | Busca de Custo Mínimo (LCFS) | A* (h1) | A* (h2) |
+|--:|--:|--:|--:|--:|--:|
+| 4 | 71,3 | 26,6 | 82,9 | 76,3 | 97,8 |
+| 5 | 182,8 | 45,8 | 235,3 | 199,7 | 234,4 |
+| 6 | 501,7 | 90,6 | 678,0 | 648,0 | 606,9 |
+| 7 | 1299,3 | 114,3 | 1705,5 | 1488,2 | 1306,6 |
+| 8 | 4473,4 | 205,5 | 6784,8 | 6195,1 | 6237,9 |
+
+Com 8 pessoas, a Busca de Custo Mínimo expande 495 dos 510 estados do grafo, enquanto a A* com h₂ expande 223 (45,1% do total da busca cega) e chega ao mesmo custo
+ótimo. É esse o ganho que a heurística traz e que a instância de quatro pessoas não
+deixa enxergar.
+
+Em todas as instâncias testadas, Busca em Largura (BFS) e Busca em Profundidade (DFS) devolveram soluções
+subótimas. O DFS é o caso mais eloquente: é de longe quem menos expande e, ainda
+assim, nunca encontra a melhor solução - expandir pouco não é sinal de qualidade,
+apenas de parar no primeiro ramo que alcança o objetivo.
+
+Um detalhe que a tabela de tempos revela: de h₁ para h₂ os nós expandidos caem
+42,5%, mas o tempo cai apenas -0,7%. A heurística mais
+informativa poda mais, porém custa mais caro por nó avaliado - ela ordena os tempos
+da margem esquerda a cada chamada, enquanto h₁ apenas toma um máximo. O ganho em nós
+expandidos não se converte integralmente em ganho de tempo.
+
+<!-- END:escalabilidade -->
