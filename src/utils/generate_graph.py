@@ -10,11 +10,11 @@ OUTPUT_FILE = "bridge_state_graph.png"
 
 
 def get_state_label(state: State) -> str:
-    """Rótulo legível do estado dentro do nó do grafo."""
-    left = ",".join(map(str, sorted(state.left_side))) if state.left_side else "Vazio"
-    right = ",".join(map(str, sorted(state.right_side))) if state.right_side else "Vazio"
-    torch = "Esq" if state.torch_is_left else "Dir"
-    return f"Esq: [{left}]\nDir: [{right}]\nT: {torch}"
+    """
+    Rótulo do estado dentro do nó do grafo. Reaproveita o diagrama usado nos
+    relatórios, apenas quebrado em linhas para caber dentro do nó.
+    """
+    return state.diagram(multiline=True)
 
 
 def build_graph(space: StateSpace) -> nx.DiGraph:
