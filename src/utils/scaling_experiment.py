@@ -25,6 +25,11 @@ from src.utils.state_space import explore_state_space
 
 SECTION_ID = "escalabilidade"
 
+# Cabeçalhos das tabelas gravadas no relatório. `generate_charts` os usa para
+# reler as tabelas, então escritor e leitor partilham as mesmas constantes.
+EXPANDED_HEADING = "### Nós expandidos"
+ELAPSED_HEADING = "### Tempo médio de processamento (µs)"
+
 # Instância do enunciado, estendida com pessoas progressivamente mais lentas.
 TIME_POOL = (1, 2, 5, 10, 15, 20, 25, 30)
 SIZES = (4, 5, 6, 7, 8)
@@ -110,7 +115,7 @@ def build_section(results: List[InstanceResult]) -> str:
 
     lines.extend([
         "",
-        "### Nós expandidos",
+        EXPANDED_HEADING,
         "",
         "| Pessoas | " + " | ".join(names) + " |",
         "|--:|" + "|".join(["--:"] * len(names)) + "|",
@@ -123,7 +128,7 @@ def build_section(results: List[InstanceResult]) -> str:
 
     lines.extend([
         "",
-        "### Tempo médio de processamento (µs)",
+        ELAPSED_HEADING,
         "",
         "| Pessoas | " + " | ".join(names) + " |",
         "|--:|" + "|".join(["--:"] * len(names)) + "|",
@@ -170,7 +175,10 @@ def build_section(results: List[InstanceResult]) -> str:
     time_drop = 100 * (1 - h2_time / h1_time)
 
     if node_drop > time_drop:
-        if time_drop > 0:
+        # A frase precisa bater com o número impresso (uma casa decimal).
+        if abs(round(time_drop, 1)) < 0.05:
+            time_sentence = "mas o tempo praticamente não muda."
+        elif time_drop > 0:
             time_sentence = f"mas o tempo cai apenas {_decimal(time_drop)}%."
         else:
             time_sentence = f"mas o tempo não acompanha: ele até sobe {_decimal(-time_drop)}%."

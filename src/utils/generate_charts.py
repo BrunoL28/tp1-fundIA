@@ -18,13 +18,15 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
+from src.utils.scaling_experiment import (  # noqa: E402
+    ELAPSED_HEADING,
+    EXPANDED_HEADING,
+    SECTION_ID,
+)
+
 DEFAULT_REPORT = Path("resultados.md")
 DEFAULT_OUTPUT_DIR = Path("relatorio") / "figuras"
 STATE_GRAPH_IMAGE = Path("bridge_state_graph.png")
-
-SECTION_ID = "escalabilidade"
-EXPANDED_HEADING = "### Nós expandidos"
-ELAPSED_HEADING = "### Tempo médio de processamento"
 
 # Uma cor fixa por método, na ordem em que os métodos aparecem nas tabelas.
 # A sequência é a paleta categórica validada para daltonismo (pares
@@ -50,7 +52,7 @@ class ScalingData:
     elapsed_us: Dict[str, List[float]]
 
 
-def _parse_table(text: str) -> Tuple[List[str], List[List[str]]]:
+def _parse_table(text: str, heading: str) -> Tuple[List[str], List[List[str]]]:
     """Lê a primeira tabela Markdown de `text`: (cabeçalho, linhas de dados)."""
     rows = []
     for line in text.splitlines():
@@ -61,18 +63,27 @@ def _parse_table(text: str) -> Tuple[List[str], List[List[str]]]:
             continue
         rows.append([cell.strip() for cell in line.strip("|").split("|")])
 
+    if len(rows) < 2:
+        raise ValueError(f"Não há tabela logo após '{heading}' em resultados.md.")
+
     header, body = rows[0], [row for row in rows[1:] if not set(row[0]) <= set(":-")]
     return header, body
 
 
 def _number(cell: str) -> float:
-    """Converte números no padrão brasileiro ('1229,6') para float."""
-    return float(cell.replace(".", "").replace(",", "."))
+    """
+    Converte um número gravado pelo relatório ('1229,6', vírgula decimal) para
+    float. Um ponto decimal é aceito tal e qual; nenhum separador de milhar é
+    esperado, então nada é descartado silenciosamente.
+    """
+    return float(cell.replace(",", "."))
 
 
 def _table_after(text: str, heading: str) -> Tuple[List[str], List[List[str]]]:
-    position = text.index(heading)
-    return _parse_table(text[position + len(heading):])
+    position = text.find(heading)
+    if position < 0:
+        raise ValueError(f"Cabeçalho '{heading}' não encontrado na seção '{SECTION_ID}'.")
+    return _parse_table(text[position + len(heading):], heading)
 
 
 def parse_scaling_tables(report: str) -> ScalingData:
@@ -94,6 +105,11 @@ def parse_scaling_tables(report: str) -> ScalingData:
     }
 
     header, rows = _table_after(section, ELAPSED_HEADING)
+    if len(rows) != len(sizes):
+        raise ValueError(
+            f"As tabelas de nós expandidos e de tempo têm números de linhas diferentes "
+            f"({len(sizes)} e {len(rows)}); reexecute o experimento de escalabilidade."
+        )
     elapsed = {
         name: [_number(row[index]) for row in rows]
         for index, name in enumerate(header[1:], start=1)
@@ -107,11 +123,13 @@ def _spread(values: Sequence[float], min_gap: float) -> List[float]:
     Afasta rótulos que cairiam uns sobre os outros (em escala logarítmica),
     empurrando para cima o que for preciso e preservando a ordem.
     """
+    # Em escala log um valor nulo não tem posição; usa-se um piso positivo.
+    floor = 1e-3
     order = sorted(range(len(values)), key=lambda i: values[i])
     placed = [0.0] * len(values)
     previous = None
     for index in order:
-        position = math.log10(values[index])
+        position = math.log10(max(values[index], floor))
         if previous is not None and position - previous < min_gap:
             position = previous + min_gap
         placed[index] = position

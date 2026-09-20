@@ -70,3 +70,27 @@ def test_informed_search_expands_less_than_blind_search(instance):
 def test_cost_based_methods_stay_optimal_in_the_experiment(instance):
     for name in ("Busca de Custo Mínimo (LCFS)", "A* (h1)", "A* (h2)"):
         assert instance.costs[name] == instance.optimal_cost
+
+
+def _fake_result(size: int, h1_time: float, h2_time: float) -> scaling.InstanceResult:
+    names = ["Busca de Custo Mínimo (LCFS)", "A* (h1)", "A* (h2)"]
+    return scaling.InstanceResult(
+        size=size, times=(1, 2, 5, 10), num_states=30, num_transitions=112, optimal_cost=17,
+        expanded=dict(zip(names, [25, 18, 14])),
+        elapsed_us=dict(zip(names, [60.0, h1_time, h2_time])),
+        costs={name: 17 for name in names},
+    )
+
+
+@pytest.mark.parametrize(
+    "h1_time, h2_time, expected",
+    [
+        (100.0, 90.0, "cai apenas 10,0%"),
+        (100.0, 100.7, "até sobe 0,7%"),
+        (100.0, 100.0, "praticamente não muda"),
+        (100.0, 100.04, "praticamente não muda"),
+    ],
+)
+def test_scaling_text_matches_the_time_variation(h1_time, h2_time, expected):
+    section = scaling.build_section([_fake_result(4, h1_time, h2_time)])
+    assert expected in section

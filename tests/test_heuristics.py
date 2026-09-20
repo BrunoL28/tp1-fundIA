@@ -38,15 +38,21 @@ def test_max_time_heuristic_values():
     assert max_time_heuristic(problem.build_state([], torch_is_left=False)) == 0
 
 
+def test_pairing_heuristic_requires_the_capacity():
+    """Sem a capacidade a heurística não tem como ser admissível: não há padrão."""
+    with pytest.raises(TypeError):
+        pairing_heuristic(BridgeProblem().build_state([1, 2, 5, 10]))
+
+
 def test_pairing_heuristic_values():
     problem = BridgeProblem()
     # Idas: 10 + 2 (emparelhando 10 com 5 e 2 com 1); voltas: 1 retorno x 1 min.
-    assert pairing_heuristic(problem.build_state([1, 2, 5, 10])) == 13
+    assert pairing_heuristic(problem.build_state([1, 2, 5, 10]), capacity=2) == 13
 
     # Com a tocha na direita é preciso um retorno a mais antes da próxima ida.
-    assert pairing_heuristic(problem.build_state([5, 10], torch_is_left=False)) == 10 + 1
+    assert pairing_heuristic(problem.build_state([5, 10], torch_is_left=False), capacity=2) == 10 + 1
 
-    assert pairing_heuristic(problem.build_state([], torch_is_left=False)) == 0
+    assert pairing_heuristic(problem.build_state([], torch_is_left=False), capacity=2) == 0
 
 
 def test_pairing_heuristic_respects_capacity():
@@ -66,8 +72,8 @@ def test_pairing_heuristic_uses_the_fastest_person_for_returns():
     """A pessoa mais rápida pode já estar do outro lado e ainda assim voltar."""
     problem = BridgeProblem()
     state = problem.build_state([5, 10], torch_is_left=False)
-    assert pairing_heuristic(state, fastest=1) == 11
-    assert pairing_heuristic(state, fastest=2) == 12
+    assert pairing_heuristic(state, capacity=2, fastest=1) == 11
+    assert pairing_heuristic(state, capacity=2, fastest=2) == 12
 
 
 @pytest.mark.parametrize("name", sorted(HEURISTICS))

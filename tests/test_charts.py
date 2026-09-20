@@ -1,3 +1,5 @@
+import pytest
+
 from src.utils import generate_charts as charts
 
 SAMPLE_REPORT = """# Resultados da Execução - Ponte e Tocha
@@ -44,3 +46,26 @@ def test_generate_charts_writes_one_png_per_metric(tmp_path):
         "escalabilidade_tempo.png",
     ]
     assert all(path.exists() and path.stat().st_size > 0 for path in written)
+
+
+def test_number_parses_brazilian_and_dotted_decimals_without_scaling():
+    assert charts._number("1229,6") == 1229.6
+    assert charts._number("49.7") == 49.7
+
+
+def test_spread_tolerates_non_positive_values():
+    positions = charts._spread([0, 10, 0], min_gap=0.1)
+    assert len(positions) == 3
+    assert all(value > 0 for value in positions)
+
+
+def test_missing_table_raises_a_clear_error():
+    report = SAMPLE_REPORT.replace("### Tempo médio de processamento (µs)", "### Outra coisa")
+    with pytest.raises(ValueError, match="Tempo médio"):
+        charts.parse_scaling_tables(report)
+
+
+def test_mismatched_row_counts_raise_a_clear_error():
+    report = SAMPLE_REPORT.replace("| 5 | 135,3 | 137,1 |\n", "")
+    with pytest.raises(ValueError, match="linhas"):
+        charts.parse_scaling_tables(report)

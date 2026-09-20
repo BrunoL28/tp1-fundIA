@@ -25,11 +25,12 @@ def max_time_heuristic(state: State) -> int:
     return max(person.time for person in state.left_side)
 
 
-def pairing_heuristic(state: State, capacity: int = 2, fastest: Optional[int] = None) -> int:
+def pairing_heuristic(state: State, capacity: int, fastest: Optional[int] = None) -> int:
     """
     h2(n) - limite inferior do agrupamento das idas somado ao custo mínimo dos
     retornos ainda obrigatórios, para uma ponte que leva até `capacity`
-    pessoas por vez.
+    pessoas por vez. A capacidade não tem valor padrão de propósito: com a
+    capacidade errada a heurística deixa de ser admissível sem avisar.
 
     Construção:
 
