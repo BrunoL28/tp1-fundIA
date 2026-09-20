@@ -1,4 +1,4 @@
-.PHONY: setup test run transitions heuristics report graph clean
+.PHONY: setup test run transitions heuristics scaling report graph clean
 
 # Numero de repeticoes de cada algoritmo no calculo do tempo medio.
 REPS ?= 1000
@@ -24,7 +24,11 @@ heuristics:
 	@echo "Verificando admissibilidade e consistencia das heuristicas..."
 	uv run python -m src.utils.heuristic_analysis
 
-report: run transitions heuristics
+scaling:
+	@echo "Executando o experimento de escalabilidade (4 a 8 pessoas)..."
+	uv run python -m src.utils.scaling_experiment
+
+report: run transitions heuristics scaling
 	@echo "Relatorio completo gerado em resultados.md."
 
 graph:
