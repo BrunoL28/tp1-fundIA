@@ -52,6 +52,10 @@ class AStarSearch(BaseSearch):
 
         explored = {}
 
+        # Menor g(n) já colocado na fronteira para cada estado, para não
+        # empilhar caminhos dominados por outro que já está na fila.
+        best_g = {initial.end(): initial.cost}
+
         while frontier:
             if self.expansion_limit_reached():
                 return None
@@ -73,7 +77,8 @@ class AStarSearch(BaseSearch):
                 self.count_generated()
                 new_cost = path.cost + arc.cost
 
-                if arc.to_node not in explored or new_cost < explored[arc.to_node]:
+                if new_cost < best_g.get(arc.to_node, float("inf")):
+                    best_g[arc.to_node] = new_cost
                     seq += 1
                     priority = new_cost + self.heuristic(arc.to_node)
                     heapq.heappush(frontier, (priority, seq, path.extend(arc)))

@@ -150,6 +150,11 @@ class LowestCostFirstSearch(BaseSearch):
         # Poda de caminhos múltiplos: menor custo já confirmado para cada estado.
         explored = {}
 
+        # Menor custo já colocado na fronteira para cada estado. Sem isso, um
+        # mesmo estado entra no heap uma vez por caminho que chega até ele,
+        # mesmo quando o novo caminho é mais caro do que outro já enfileirado.
+        best_cost = {initial.end(): initial.cost}
+
         while frontier:
             if self.expansion_limit_reached():
                 return None
@@ -172,7 +177,8 @@ class LowestCostFirstSearch(BaseSearch):
                 self.count_generated()
                 new_cost = cost + arc.cost
 
-                if arc.to_node not in explored or new_cost < explored[arc.to_node]:
+                if new_cost < best_cost.get(arc.to_node, float("inf")):
+                    best_cost[arc.to_node] = new_cost
                     seq += 1
                     heapq.heappush(frontier, (new_cost, seq, path.extend(arc)))
                     self.observe_frontier(len(frontier))
