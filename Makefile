@@ -1,4 +1,4 @@
-.PHONY: setup test run transitions heuristics scaling report graph clean
+.PHONY: setup test run transitions heuristics scaling report graph charts clean
 
 # Numero de repeticoes de cada algoritmo no calculo do tempo medio.
 REPS ?= 1000
@@ -34,6 +34,10 @@ report: run transitions heuristics scaling
 graph:
 	@echo "Gerando a visualizacao do grafo..."
 	uv run python -m src.utils.generate_graph
+
+charts:
+	@echo "Gerando os graficos de escalabilidade para o relatorio..."
+	uv run python -m src.utils.generate_charts
 
 clean:
 	@echo "Limpando arquivos temporarios e cache..."

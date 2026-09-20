@@ -69,6 +69,7 @@ Na raiz do projeto, utilize os seguintes comandos no terminal:
 - **`make scaling`**: Repete o comparativo para grupos de 4 a 8 pessoas e grava a análise de escalabilidade, onde as diferenças entre os métodos aparecem com clareza.
 - **`make report`**: Executa `run`, `transitions`, `heuristics` e `scaling` em sequência, produzindo o relatório completo.
 - **`make graph`**: Mapeia o domínio do problema e exporta a visualização do grafo em alta resolução para a imagem `bridge_state_graph.png`.
+- **`make charts`**: Lê as tabelas de escalabilidade do `resultados.md` e gera os gráficos do relatório em `relatorio/figuras/` (junto de uma cópia do grafo).
 - **`make clean`**: Limpa diretórios de cache (`__pycache__`, `.pytest_cache`) e destrói o ambiente virtual.
 
 ### Linha de comando
